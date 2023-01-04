@@ -118,6 +118,7 @@ VERSION_RSVG=2.57.0
 VERSION_AOM=3.7.0
 VERSION_HEIF=1.16.2
 VERSION_CGIF=0.3.2
+VERSION_OPENJPEG=2.5.2
 
 # Remove patch version component
 without_patch() {
@@ -177,6 +178,7 @@ version_latest "rsvg" "$VERSION_RSVG" "5420"
 version_latest "aom" "$VERSION_AOM" "17628"
 version_latest "heif" "$VERSION_HEIF" "strukturag/libheif"
 version_latest "cgif" "$VERSION_CGIF" "dloebl/cgif"
+version_latest "openjpeg" "$VERSION_OPENJPEG" "2550"
 if [ "$ALL_AT_VERSION_LATEST" = "false" ]; then exit 1; fi
 
 # Download and build dependencies from source
@@ -437,11 +439,19 @@ CFLAGS="${CFLAGS} -O3" meson setup _build --default-library=static --buildtype=r
   -Dtests=false
 meson install -C _build --tag devel
 
+mkdir ${DEPS}/openjpeg
+$CURL https://github.com/uclouvain/openjpeg/archive/refs/tags/v${VERSION_OPENJPEG}.tar.gz | tar xzC ${DEPS}/openjpeg --strip-components=1
+cd ${DEPS}/openjpeg
+CFLAGS="${CFLAGS} -O3" cmake -G"Unix Makefiles" \
+  -DCMAKE_TOOLCHAIN_FILE=${ROOT}/Toolchain.cmake -DCMAKE_INSTALL_PREFIX=${TARGET} -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_SHARED_LIBS=FALSE -DZLIB_COMPAT=TRUE -DBUILD_CODEC:BOOL=OFF
+make install/strip
+
 mkdir ${DEPS}/vips
 $CURL https://github.com/libvips/libvips/releases/download/v${VERSION_VIPS}/vips-$(without_prerelease $VERSION_VIPS).tar.xz | tar xJC ${DEPS}/vips --strip-components=1
 cd ${DEPS}/vips
 # Backport libarchive-based dzsave
-$CURL https://raw.githubusercontent.com/libvips/build-win64-mxe/master/build/patches/vips-8-pr-3476.patch | patch -p1
+# $CURL https://raw.githubusercontent.com/libvips/build-win64-mxe/master/build/patches/vips-8-pr-3476.patch | patch -p1
 # Link libvips.so.42 statically into libvips-cpp.so.42
 sed -i'.bak' "s/library('vips'/static_&/" libvips/meson.build
 sed -i'.bak' "/version: library_version/{N;d;}" libvips/meson.build
@@ -459,7 +469,7 @@ fi
 sed -i'.bak' "/subdir('man')/{N;N;N;N;d;}" meson.build
 CFLAGS="${CFLAGS} -O3" CXXFLAGS="${CXXFLAGS} -O3" meson setup _build --default-library=shared --buildtype=release --strip --prefix=${TARGET} ${MESON} \
   -Ddeprecated=false -Dintrospection=false -Dmodules=disabled -Dcfitsio=disabled -Dfftw=disabled -Djpeg-xl=disabled \
-  -Dmagick=disabled -Dmatio=disabled -Dnifti=disabled -Dopenexr=disabled -Dopenjpeg=disabled -Dopenslide=disabled \
+  -Dmagick=disabled -Dmatio=disabled -Dnifti=disabled -Dopenexr=disabled -Dopenjpeg=enabled -Dopenslide=disabled \
   -Dpdfium=disabled -Dpoppler=disabled -Dquantizr=disabled \
   -Dppm=false -Danalyze=false -Dradiance=false \
   ${LINUX:+-Dcpp_link_args="$LDFLAGS -Wl,-Bsymbolic-functions -Wl,--version-script=$DEPS/vips/vips.map $EXCLUDE_LIBS"}
@@ -533,6 +543,7 @@ printf "{\n\
   \"imagequant\": \"${VERSION_IMAGEQUANT}\",\n\
   \"lcms\": \"${VERSION_LCMS2}\",\n\
   \"mozjpeg\": \"${VERSION_MOZJPEG}\",\n\
+  \"openjpeg\": \"${VERSION_OPENJPEG}\",\n\
   \"orc\": \"${VERSION_ORC}\",\n\
   \"pango\": \"${VERSION_PANGO}\",\n\
   \"pixman\": \"${VERSION_PIXMAN}\",\n\
