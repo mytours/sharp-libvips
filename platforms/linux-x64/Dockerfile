@@ -48,7 +48,7 @@ RUN \
     --no-modify-path \
     --profile minimal \
     && \
-  cargo install cargo-c --locked && \
+  cargo install cargo-c@0.10.19 --locked && \
   ln -s /usr/bin/cmake3 /usr/bin/cmake && \
   pip3 install meson ninja packaging tomli
 
